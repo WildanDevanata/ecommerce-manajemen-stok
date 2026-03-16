@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect,useState } from 'react'
 import Navbar from '@/components/shared/navbar'
 import Footer from '@/components/shared/footer'
 import Container from '@/components/shared/container'
@@ -8,36 +8,20 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { FiTrash2, FiMinus, FiPlus, FiShoppingBag, FiArrowRight } from 'react-icons/fi'
 
-// Mock cart data
-const initialCartItems = [
-  {
-    id: '1',
-    name: 'Susu Segar Full Cream 1L',
-    price: 25000,
-    image: '/images/products/susu-segar-1l.jpg',
-    quantity: 2,
-    stock: 45,
-  },
-  {
-    id: '2',
-    name: 'Greek Yogurt Original 200ml',
-    price: 15000,
-    image: '/images/products/greek-yogurt.jpg',
-    quantity: 3,
-    stock: 30,
-  },
-  {
-    id: '3',
-    name: 'Keju Cheddar Premium 200gr',
-    price: 35000,
-    image: '/images/products/keju-cheddar.jpg',
-    quantity: 1,
-    stock: 4,
-  },
-]
+
+
 
 export default function CartPage() {
-  const [cartItems, setCartItems] = useState(initialCartItems)
+  useEffect(() => {
+  const fetchCart = async () => {
+    const res = await fetch('/api/cart')
+    const data = await res.json()
+    setCartItems(data)
+  }
+
+  fetchCart()
+}, [])
+  const [cartItems, setCartItems] = useState<any[]>([])
 
   const updateQuantity = (id: string, delta: number) => {
     setCartItems((items) =>

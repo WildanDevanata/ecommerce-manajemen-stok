@@ -265,7 +265,7 @@ export default function ProductsClient({
                       id={product.id}
                       name={product.name}
                       price={product.price}
-                      discountedPrice={discountedPrice}
+                      // discountedPrice={discountedPrice}
                       discount={product.discount}
                       image={product.image}
                       rating={product.rating}

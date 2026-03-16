@@ -38,7 +38,29 @@ export default function ProductCard({
     : price
 
   const isLowStock = stock < 5
+  
+const addToCart = async (productId: string) => {
+  try {
+    const res = await fetch("/api/cart", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        productId,
+      }),
+    })
 
+    if (!res.ok) {
+      throw new Error("Gagal menambahkan ke keranjang")
+    }
+
+    alert("Produk berhasil ditambahkan ke keranjang 🛒")
+
+  } catch (error) {
+    console.error(error)
+  }
+}
   return (
     <div
       className="group relative bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2"
@@ -98,10 +120,17 @@ export default function ProductCard({
             absolute bottom-4 left-4 right-4 transform transition-all duration-300
             ${isHovered ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'}
           `}>
-            <button className="w-full bg-white text-gray-900 py-3 rounded-xl font-semibold flex items-center justify-center gap-2 hover:bg-blue-600 hover:text-white transition-colors shadow-xl">
-              <FiShoppingCart className="w-5 h-5" />
-              Tambah ke Keranjang
-            </button>
+            <button
+  onClick={(e) => {
+    e.preventDefault()
+    e.stopPropagation()
+    addToCart(id)
+  }}
+  className="w-full bg-white text-gray-900 py-3 rounded-xl font-semibold flex items-center justify-center gap-2 hover:bg-blue-600 hover:text-white transition-colors shadow-xl"
+>
+  <FiShoppingCart className="w-5 h-5" />
+  Tambah ke Keranjang
+</button>
           </div>
 
         </div>
