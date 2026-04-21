@@ -1,636 +1,500 @@
-import { PrismaClient } from "@prisma/client"
-import bcrypt from "bcryptjs"
+'use client'
 
-const prisma = new PrismaClient()
-// Helper function to create slug from string
-function slugify(text) {
-  return text
-    .toLowerCase()
-    .replace(/[^\w\s-]/g, '')
-    .replace(/\s+/g, '-')
-    .replace(/--+/g, '-')
-    .trim()
+import { useState, useEffect } from 'react'
+import { FiPlus, FiSearch, FiEdit2, FiTrash2 } from 'react-icons/fi'
+
+type Product = {
+  id: string
+  sku: string
+  name: string
+  categoryId: string
+  price: number // Prisma Decimal di-parse ke number
+  discount?: number // Persentase 0-100
+  stock: number
+  images: string[]
+  category?: {
+    name: string
+  }
+  // Fields lain yang mungkin dibutuhkan
 }
 
-async function main() {
-  console.log('🌱 Starting seed...')
+export default function ProductsPage() {
+  const [searchQuery, setSearchQuery] = useState('')
+  const [products, setProducts] = useState<Product[]>([])
+  const [showModal, setShowModal] = useState(false)
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
 
-  // ============================================
-  // 1. CREATE USERS
-  // ============================================
-  console.log('👤 Creating users...')
-
-  const hashedPassword = await bcrypt.hash('password123', 10)
-
-  const admin = await prisma.user.upsert({
-    where: { email: 'admin@tokosusu.com' },
-    update: {},
-    create: {
-      email: 'admin@tokosusu.com',
-      name: 'Admin Toko Susu',
-      password: hashedPassword,
-      role: 'ADMIN',
-      phone: '081234567890',
-      address: 'Jl. Raya Magetan No. 123',
-      city: 'Magetan',
-      province: 'Jawa Timur',
-      postalCode: '63319',
-      emailVerified: new Date(),
-    },
+  const [form, setForm] = useState({
+    sku: "",
+    name: "",
+    categoryId: "",
+    price: 0,
+    discount: 0,
+    stock: 0
   })
 
-  const customer1 = await prisma.user.upsert({
-    where: { email: 'ahmad.pratama@gmail.com' },
-    update: {},
-    create: {
-      email: 'ahmad.pratama@gmail.com',
-      name: 'Ahmad Pratama',
-      password: hashedPassword,
-      role: 'CUSTOMER',
-      phone: '081234567891',
-      address: 'Jl. Sudirman No. 45',
-      city: 'Surabaya',
-      province: 'Jawa Timur',
-      postalCode: '60271',
-      emailVerified: new Date(),
-    },
-  })
+  // Fetch products dengan include category
+  useEffect(() => {
+    fetchProducts()
+  }, [])
 
-  const customer2 = await prisma.user.upsert({
-    where: { email: 'siti.nurhaliza@gmail.com' },
-    update: {},
-    create: {
-      email: 'siti.nurhaliza@gmail.com',
-      name: 'Siti Nurhaliza',
-      password: hashedPassword,
-      role: 'CUSTOMER',
-      phone: '081234567892',
-      address: 'Jl. Gatot Subroto No. 78',
-      city: 'Jakarta',
-      province: 'DKI Jakarta',
-      postalCode: '12190',
-      emailVerified: new Date(),
-    },
-  })
-
-  const customer3 = await prisma.user.upsert({
-    where: { email: 'budi.santoso@gmail.com' },
-    update: {},
-    create: {
-      email: 'budi.santoso@gmail.com',
-      name: 'Budi Santoso',
-      password: hashedPassword,
-      role: 'CUSTOMER',
-      phone: '081234567893',
-      address: 'Jl. Diponegoro No. 12',
-      city: 'Bandung',
-      province: 'Jawa Barat',
-      postalCode: '40115',
-      emailVerified: new Date(),
-    },
-  })
-
-  console.log('✅ Users created')
-
-  // ============================================
-  // 2. CREATE CATEGORIES
-  // ============================================
-  console.log('📁 Creating categories...')
-
-  const categories = [
-    {
-      name: 'Susu Segar',
-      slug: 'susu-segar',
-      description: 'Susu segar langsung dari peternakan pilihan dengan kualitas terbaik',
-      icon: '🥛',
-      gradient: 'from-blue-500 to-cyan-500',
-      bgColor: 'from-blue-50 to-cyan-50',
-    },
-    {
-      name: 'Susu UHT',
-      slug: 'susu-uht',
-      description: 'Susu ultra high temperature dengan berbagai varian rasa',
-      icon: '📦',
-      gradient: 'from-purple-500 to-pink-500',
-      bgColor: 'from-purple-50 to-pink-50',
-    },
-    {
-      name: 'Yogurt',
-      slug: 'yogurt',
-      description: 'Yogurt sehat dengan probiotik untuk pencernaan yang lebih baik',
-      icon: '🥄',
-      gradient: 'from-green-500 to-emerald-500',
-      bgColor: 'from-green-50 to-emerald-50',
-    },
-    {
-      name: 'Keju',
-      slug: 'keju',
-      description: 'Berbagai jenis keju berkualitas untuk kebutuhan masakan Anda',
-      icon: '🧀',
-      gradient: 'from-orange-500 to-amber-500',
-      bgColor: 'from-orange-50 to-amber-50',
-    },
-    {
-      name: 'Susu Formula',
-      slug: 'susu-formula',
-      description: 'Susu formula dengan nutrisi lengkap untuk tumbuh kembang bayi',
-      icon: '🍼',
-      gradient: 'from-pink-500 to-rose-500',
-      bgColor: 'from-pink-50 to-rose-50',
-    },
-    {
-      name: 'Minuman Susu',
-      slug: 'minuman-susu',
-      description: 'Minuman susu siap minum dengan berbagai varian rasa',
-      icon: '🥤',
-      gradient: 'from-indigo-500 to-purple-500',
-      bgColor: 'from-indigo-50 to-purple-50',
-    },
-  ]
-
-  const createdCategories = []
-  for (const cat of categories) {
-    const category = await prisma.category.upsert({
-      where: { slug: cat.slug },
-      update: {},
-      create: cat,
-    })
-    createdCategories.push(category)
+  const fetchProducts = async () => {
+    try {
+      setLoading(true)
+      setError('')
+      const res = await fetch('/api/products')
+      if (!res.ok) throw new Error('Gagal memuat data')
+      const data = await res.json()
+      setProducts(data)
+    } catch (err: any) {
+      setError(err.message)
+    } finally {
+      setLoading(false)
+    }
   }
 
-  console.log('✅ Categories created')
+  const filteredProducts = products.filter(
+    (product) =>
+      product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      product.sku.toLowerCase().includes(searchQuery.toLowerCase())
+  )
 
-  // ============================================
-  // 3. CREATE PRODUCTS
-  // ============================================
-  console.log('📦 Creating products...')
-
-  const products = [
-    {
-      name: 'Susu Segar Full Cream 1L',
-      slug: 'susu-segar-full-cream-1l',
-      description: 'Susu segar full cream dengan kandungan nutrisi lengkap. Langsung dari peternakan pilihan untuk menjaga kesegaran dan kualitas.',
-      price: 25000,
-      compareAtPrice: 29411.76, // Price before 15% discount
-      discount: 15,
-      stock: 45,
-      minStock: 10,
-      weight: 1000,
-      sku: 'SSG-001',
-      images: ['/images/products/susu-segar-1l.jpg'],
-      categoryId: createdCategories[0].id, // Susu Segar
-      isActive: true,
-      isFeatured: true,
-      sold: 328,
-      rating: 4.9,
-    },
-    {
-      name: 'Susu UHT Cokelat 250ml',
-      slug: 'susu-uht-cokelat-250ml',
-      description: 'Susu UHT rasa cokelat yang nikmat dan bergizi. Dikemas praktis untuk dibawa kemana-mana.',
-      price: 8000,
-      compareAtPrice: 8888.89, // Price before 10% discount
-      discount: 10,
-      stock: 120,
-      minStock: 20,
-      weight: 250,
-      sku: 'UHT-001',
-      images: ['/images/products/uht-coklat.jpg'],
-      categoryId: createdCategories[1].id, // Susu UHT
-      isActive: true,
-      isFeatured: true,
-      sold: 567,
-      rating: 4.8,
-    },
-    {
-      name: 'Greek Yogurt Original 200ml',
-      slug: 'greek-yogurt-original-200ml',
-      description: 'Greek yogurt original dengan probiotik tinggi. Baik untuk pencernaan dan kesehatan tubuh.',
-      price: 15000,
-      compareAtPrice: null,
-      discount: 0,
-      stock: 30,
-      minStock: 10,
-      weight: 200,
-      sku: 'YGT-001',
-      images: ['/images/products/greek-yogurt.jpg'],
-      categoryId: createdCategories[2].id, // Yogurt
-      isActive: true,
-      isFeatured: false,
-      sold: 234,
-      rating: 4.7,
-    },
-    {
-      name: 'Keju Cheddar Premium 200gr',
-      slug: 'keju-cheddar-premium-200gr',
-      description: 'Keju cheddar premium dengan rasa yang gurih dan tekstur yang lembut. Cocok untuk berbagai masakan.',
-      price: 35000,
-      compareAtPrice: 43750, // Price before 20% discount
-      discount: 20,
-      stock: 4,
-      minStock: 5,
-      weight: 200,
-      sku: 'KJU-001',
-      images: ['/images/products/keju-cheddar.jpg'],
-      categoryId: createdCategories[3].id, // Keju
-      isActive: true,
-      isFeatured: true,
-      sold: 189,
-      rating: 4.9,
-    },
-    {
-      name: 'Susu Segar Low Fat 1L',
-      slug: 'susu-segar-low-fat-1l',
-      description: 'Susu segar dengan kandungan lemak rendah. Cocok untuk yang sedang menjaga berat badan.',
-      price: 28000,
-      compareAtPrice: null,
-      discount: 0,
-      stock: 67,
-      minStock: 10,
-      weight: 1000,
-      sku: 'SSG-002',
-      images: ['/images/products/susu-segar-lowfat.jpg'],
-      categoryId: createdCategories[0].id, // Susu Segar
-      isActive: true,
-      isFeatured: false,
-      sold: 412,
-      rating: 4.6,
-    },
-    {
-      name: 'Yogurt Rasa Buah 150ml',
-      slug: 'yogurt-rasa-buah-150ml',
-      description: 'Yogurt dengan berbagai pilihan rasa buah. Segar dan menyehatkan untuk camilan sehari-hari.',
-      price: 12000,
-      compareAtPrice: 12631.58, // Price before 5% discount
-      discount: 5,
-      stock: 88,
-      minStock: 15,
-      weight: 150,
-      sku: 'YGT-002',
-      images: ['/images/products/yogurt-buah.jpg'],
-      categoryId: createdCategories[2].id, // Yogurt
-      isActive: true,
-      isFeatured: false,
-      sold: 523,
-      rating: 4.8,
-    },
-    {
-      name: 'Susu UHT Strawberry 250ml',
-      slug: 'susu-uht-strawberry-250ml',
-      description: 'Susu UHT rasa strawberry yang manis dan segar. Disukai anak-anak dan dewasa.',
-      price: 8000,
-      compareAtPrice: null,
-      discount: 0,
-      stock: 95,
-      minStock: 20,
-      weight: 250,
-      sku: 'UHT-002',
-      images: ['/images/products/uht-strawberry.jpg'],
-      categoryId: createdCategories[1].id, // Susu UHT
-      isActive: true,
-      isFeatured: false,
-      sold: 445,
-      rating: 4.7,
-    },
-    {
-      name: 'Keju Mozarella 250gr',
-      slug: 'keju-mozarella-250gr',
-      description: 'Keju mozarella premium untuk pizza dan pasta. Mudah meleleh dan memberikan rasa yang lezat.',
-      price: 42000,
-      compareAtPrice: 49411.76, // Price before 15% discount
-      discount: 15,
-      stock: 3,
-      minStock: 5,
-      weight: 250,
-      sku: 'KJU-002',
-      images: ['/images/products/keju-mozarella.jpg'],
-      categoryId: createdCategories[3].id, // Keju
-      isActive: true,
-      isFeatured: false,
-      sold: 156,
-      rating: 4.9,
-    },
-    {
-      name: 'Susu Formula Bayi 400gr',
-      slug: 'susu-formula-bayi-400gr',
-      description: 'Susu formula dengan nutrisi lengkap untuk tumbuh kembang bayi. Mudah dicerna dan aman.',
-      price: 125000,
-      compareAtPrice: null,
-      discount: 0,
-      stock: 25,
-      minStock: 10,
-      weight: 400,
-      sku: 'FRM-001',
-      images: ['/images/products/susu-formula.jpg'],
-      categoryId: createdCategories[4].id, // Susu Formula
-      isActive: true,
-      isFeatured: true,
-      sold: 278,
-      rating: 4.8,
-    },
-    {
-      name: 'Susu Segar Cokelat 1L',
-      slug: 'susu-segar-cokelat-1l',
-      description: 'Susu segar dengan perasa cokelat alami. Nikmat dan bergizi untuk seluruh keluarga.',
-      price: 27000,
-      compareAtPrice: null,
-      discount: 0,
-      stock: 52,
-      minStock: 10,
-      weight: 1000,
-      sku: 'SSG-003',
-      images: ['/images/products/susu-segar-cokelat.jpg'],
-      categoryId: createdCategories[0].id, // Susu Segar
-      isActive: true,
-      isFeatured: false,
-      sold: 298,
-      rating: 4.7,
-    },
-    {
-      name: 'Susu UHT Vanilla 250ml',
-      slug: 'susu-uht-vanilla-250ml',
-      description: 'Susu UHT dengan rasa vanilla yang lembut. Praktis dan tahan lama.',
-      price: 8000,
-      compareAtPrice: null,
-      discount: 0,
-      stock: 110,
-      minStock: 20,
-      weight: 250,
-      sku: 'UHT-003',
-      images: ['/images/products/uht-vanilla.jpg'],
-      categoryId: createdCategories[1].id, // Susu UHT
-      isActive: true,
-      isFeatured: false,
-      sold: 387,
-      rating: 4.6,
-    },
-    {
-      name: 'Yogurt Drink Mangga 200ml',
-      slug: 'yogurt-drink-mangga-200ml',
-      description: 'Minuman yogurt rasa mangga yang segar. Mudah diminum dan menyegarkan.',
-      price: 10000,
-      compareAtPrice: null,
-      discount: 0,
-      stock: 75,
-      minStock: 15,
-      weight: 200,
-      sku: 'YGT-003',
-      images: ['/images/products/yogurt-mangga.jpg'],
-      categoryId: createdCategories[2].id, // Yogurt
-      isActive: true,
-      isFeatured: false,
-      sold: 412,
-      rating: 4.7,
-    },
-  ]
-
-  const createdProducts = []
-  for (const prod of products) {
-    const product = await prisma.product.create({
-      data: prod,
-    })
-    createdProducts.push(product)
+  const formatCurrency = (amount: number) => {
+    return `Rp ${amount.toLocaleString('id-ID')}`
   }
 
-  console.log('✅ Products created')
-
-  // ============================================
-  // 4. CREATE CARTS
-  // ============================================
-  console.log('🛒 Creating carts...')
-
-  // Create cart for customer1 with 3 items
-  const cart1 = await prisma.cart.create({
-    data: {
-      userId: customer1.id,
-      items: {
-        create: [
-          {
-            productId: createdProducts[0].id, // Susu Segar Full Cream
-            quantity: 2,
-          },
-          {
-            productId: createdProducts[2].id, // Greek Yogurt
-            quantity: 3,
-          },
-          {
-            productId: createdProducts[3].id, // Keju Cheddar
-            quantity: 1,
-          },
-        ],
-      },
-    },
-  })
-
-  // Create empty cart for customer2
-  await prisma.cart.create({
-    data: {
-      userId: customer2.id,
-    },
-  })
-
-  console.log('✅ Carts created')
-
-  // ============================================
-  // 5. CREATE ORDERS
-  // ============================================
-  console.log('📋 Creating orders...')
-
-  // Order 1 - Completed order
-  const order1 = await prisma.order.create({
-    data: {
-      orderNumber: 'TR-2024-0156',
-      userId: customer1.id,
-      customerName: customer1.name,
-      customerEmail: customer1.email,
-      customerPhone: customer1.phone,
-      subtotal: 92500,
-      shippingCost: 15000,
-      tax: 0,
-      discount: 0,
-      total: 107500,
-      status: 'DELIVERED',
-      paymentStatus: 'PAID',
-      paymentMethod: 'Transfer Bank',
-      shippingAddress: customer1.address,
-      shippingCity: customer1.city,
-      shippingProvince: customer1.province,
-      shippingPostalCode: customer1.postalCode,
-      shippingCourier: 'JNE',
-      shippingService: 'REG',
-      trackingNumber: 'JNE1234567890',
-      items: {
-        create: [
-          {
-            productId: createdProducts[0].id,
-            productName: createdProducts[0].name,
-            productImage: createdProducts[0].images[0],
-            quantity: 2,
-            price: 25000,
-            subtotal: 50000,
-          },
-          {
-            productId: createdProducts[1].id,
-            productName: createdProducts[1].name,
-            productImage: createdProducts[1].images[0],
-            quantity: 3,
-            price: 8000,
-            subtotal: 24000,
-          },
-          {
-            productId: createdProducts[4].id,
-            productName: createdProducts[4].name,
-            productImage: createdProducts[4].images[0],
-            quantity: 1,
-            price: 28000,
-            subtotal: 28000,
-          },
-        ],
-      },
-    },
-  })
-
-  // Order 2 - Pending order
-  const order2 = await prisma.order.create({
-    data: {
-      orderNumber: 'TR-2024-0155',
-      userId: customer2.id,
-      customerName: customer2.name,
-      customerEmail: customer2.email,
-      customerPhone: customer2.phone,
-      subtotal: 125000,
-      shippingCost: 0, // Free shipping
-      tax: 0,
-      discount: 0,
-      total: 125000,
-      status: 'PROCESSING',
-      paymentStatus: 'PAID',
-      paymentMethod: 'E-Wallet',
-      shippingAddress: customer2.address,
-      shippingCity: customer2.city,
-      shippingProvince: customer2.province,
-      shippingPostalCode: customer2.postalCode,
-      shippingCourier: 'JNT',
-      shippingService: 'Express',
-      items: {
-        create: [
-          {
-            productId: createdProducts[8].id,
-            productName: createdProducts[8].name,
-            productImage: createdProducts[8].images[0],
-            quantity: 1,
-            price: 125000,
-            subtotal: 125000,
-          },
-        ],
-      },
-    },
-  })
-
-  console.log('✅ Orders created')
-
-  // ============================================
-  // 6. CREATE STOCK HISTORIES
-  // ============================================
-  console.log('📊 Creating stock histories...')
-
-  await prisma.stockHistory.create({
-    data: {
-      productId: createdProducts[0].id,
-      type: 'IN',
-      quantity: 100,
-      beforeStock: 0,
-      afterStock: 100,
-      notes: 'Initial stock',
-      userId: admin.id,
-    },
-  })
-
-  await prisma.stockHistory.create({
-    data: {
-      productId: createdProducts[0].id,
-      type: 'OUT',
-      quantity: 2,
-      beforeStock: 100,
-      afterStock: 98,
-      notes: 'Order #TR-2024-0156',
-      userId: null,
-    },
-  })
-
-  console.log('✅ Stock histories created')
-
-  // ============================================
-  // 7. CREATE SETTINGS
-  // ============================================
-  console.log('⚙️ Creating settings...')
-
-  const settings = [
-    {
-      key: 'store_name',
-      value: 'Toko Susu Kita',
-      description: 'Nama toko',
-    },
-    {
-      key: 'store_email',
-      value: 'info@tokosusu.com',
-      description: 'Email toko',
-    },
-    {
-      key: 'store_phone',
-      value: '+62 812-3456-7890',
-      description: 'Telepon toko',
-    },
-    {
-      key: 'store_address',
-      value: 'Jl. Raya Magetan No. 123, Magetan, Jawa Timur 63319',
-      description: 'Alamat toko',
-    },
-    {
-      key: 'free_shipping_min',
-      value: '100000',
-      description: 'Minimal belanja untuk gratis ongkir',
-    },
-    {
-      key: 'shipping_cost',
-      value: '15000',
-      description: 'Biaya pengiriman standar',
-    },
-  ]
-
-  for (const setting of settings) {
-    await prisma.setting.upsert({
-      where: { key: setting.key },
-      update: {},
-      create: setting,
-    })
+  const formatDiscount = (discount?: number) => {
+    return discount && discount > 0 ? `${discount}%` : '-'
   }
 
-  console.log('✅ Settings created')
+  const getDiscountedPrice = (price: number, discount?: number) => {
+    return discount && discount > 0 
+      ? Math.round(price * (1 - discount / 100))
+      : price
+  }
 
-  console.log('')
-  console.log('🎉 Seed completed successfully!')
-  console.log('')
-  console.log('📊 Summary:')
-  console.log('   - Users: 4 (1 admin, 3 customers)')
-  console.log('   - Categories: 6')
-  console.log('   - Products: 12')
-  console.log('   - Carts: 2 (1 with items, 1 empty)')
-  console.log('   - Orders: 2 (1 delivered, 1 processing)')
-  console.log('   - Settings: 6')
-  console.log('')
-  console.log('👤 Login credentials:')
-  console.log('   Admin: admin@tokosusu.com / password123')
-  console.log('   Customer: ahmad.pratama@gmail.com / password123')
-  console.log('   Customer: siti.nurhaliza@gmail.com / password123')
-  console.log('   Customer: budi.santoso@gmail.com / password123')
+  /* =======================
+     CREATE
+  ======================= */
+  const createProduct = async () => {
+    if (!form.sku?.trim() || !form.name?.trim() || !form.categoryId?.trim() || form.price <= 0) {
+      setError('Lengkapi SKU, Nama, Kategori, dan Harga')
+      return
+    }
+
+    try {
+      setLoading(true)
+      setError('')
+      const res = await fetch("/api/products", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sku: form.sku.trim(),
+          name: form.name.trim(),
+          categoryId: form.categoryId.trim(),
+          price: parseFloat(form.price.toString()),
+          discount: form.discount || 0,
+          stock: form.stock || 0
+        })
+      })
+
+      if (!res.ok) {
+        const errorData = await res.json()
+        throw new Error(errorData.message || 'Gagal membuat produk')
+      }
+
+      const newProduct = await res.json()
+      setProducts([newProduct, ...products])
+      setShowModal(false)
+      setForm({ sku: "", name: "", categoryId: "", price: 0, discount: 0, stock: 0 })
+    } catch (err: any) {
+      setError(err.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  /* =======================
+     UPDATE
+  ======================= */
+  const updateProduct = async () => {
+    if (!editingProduct || !form.sku?.trim() || !form.name?.trim() || !form.categoryId?.trim() || form.price <= 0) {
+      setError('Lengkapi SKU, Nama, Kategori, dan Harga')
+      return
+    }
+
+    try {
+      setLoading(true)
+      setError('')
+      const res = await fetch(`/api/products/${editingProduct.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sku: form.sku.trim(),
+          name: form.name.trim(),
+          categoryId: form.categoryId.trim(),
+          price: parseFloat(form.price.toString()),
+          discount: form.discount || 0,
+          stock: form.stock || 0
+        })
+      })
+
+      if (!res.ok) {
+        const errorData = await res.json()
+        throw new Error(errorData.message || 'Gagal update produk')
+      }
+
+      await fetchProducts()
+      setEditingProduct(null)
+      setShowModal(false)
+    } catch (err: any) {
+      setError(err.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  /* =======================
+     DELETE
+  ======================= */
+  const deleteProduct = async (id: string) => {
+    if (!confirm("Hapus produk ini?")) return
+
+    try {
+      setLoading(true)
+      const res = await fetch(`/api/products/${id}`, { method: "DELETE" })
+      if (!res.ok) {
+        const errorData = await res.json()
+        throw new Error(errorData.message || 'Gagal hapus produk')
+      }
+      setProducts(products.filter(p => p.id !== id))
+    } catch (err: any) {
+      setError(err.message)
+      alert(err.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div className="space-y-6 p-6 max-w-7xl mx-auto">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Manajemen Produk</h1>
+          <p className="text-gray-600 mt-1">Kelola semua produk dalam sistem</p>
+        </div>
+        <button
+          onClick={() => {
+            setEditingProduct(null)
+            setForm({ sku: "", name: "", categoryId: "", price: 0, discount: 0, stock: 0 })
+            setError('')
+            setShowModal(true)
+          }}
+          disabled={loading}
+          className="flex items-center gap-2 px-4 py-2.5 bg-black text-white rounded-lg hover:bg-gray-800 disabled:opacity-50 transition-colors"
+        >
+          <FiPlus className="w-5 h-5" />
+          Tambah Produk
+        </button>
+      </div>
+
+      {/* Error */}
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-lg">
+          {error}
+        </div>
+      )}
+
+      {/* Table Card */}
+      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
+        {/* Search */}
+        <div className="p-6 border-b border-gray-200">
+          <div className="relative max-w-md">
+            <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Cari produk atau SKU..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              disabled={loading}
+            />
+          </div>
+        </div>
+
+        {/* Table */}
+        <div className="overflow-x-auto">
+          {loading ? (
+            <div className="p-12 text-center text-gray-500">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-black mx-auto mb-2"></div>
+              Memuat data produk...
+            </div>
+          ) : filteredProducts.length === 0 ? (
+            <div className="p-12 text-center text-gray-500">
+              {searchQuery ? 'Tidak ada hasil pencarian' : 'Belum ada produk'}
+            </div>
+          ) : (
+            <table className="w-full">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">SKU</th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Nama Produk</th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Kategori</th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Harga</th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Diskon</th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Harga Diskon</th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Stok</th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Aksi</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200">
+                {filteredProducts.map((product) => {
+                  const discountedPrice = getDiscountedPrice(product.price, product.discount)
+                  
+                  return (
+                    <tr key={product.id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className="text-sm font-semibold text-gray-900 bg-gray-100 px-2 py-1 rounded text-xs">
+                          {product.sku}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-12 h-12 bg-gradient-to-br from-blue-100 to-indigo-200 rounded-xl flex items-center justify-center text-lg font-semibold p-2">
+                            {product.images?.[0] ? (
+                              <img src={product.images[0]} alt={product.name} className="w-full h-full object-cover rounded-lg" />
+                            ) : (
+                              product.name.charAt(0).toUpperCase()
+                            )}
+                          </div>
+                          <div>
+                            <span className="text-sm font-semibold text-gray-900 block">{product.name}</span>
+                            {product.images?.length > 0 && (
+                              <span className="text-xs text-gray-500">{product.images.length} gambar</span>
+                            )}
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className="px-3 py-1 bg-blue-100 text-blue-800 text-sm font-medium rounded-full">
+                          {product.category?.name || product.categoryId}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
+                        {formatCurrency(product.price)}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`px-3 py-1 text-xs font-semibold rounded-full ${
+                          product.discount && product.discount > 0 
+                            ? 'bg-green-100 text-green-800' 
+                            : 'bg-gray-100 text-gray-600'
+                        }`}>
+                          {formatDiscount(product.discount)}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        {product.discount && product.discount > 0 ? (
+                          <div className="space-y-1">
+                            <span className="line-through text-gray-400 text-xs">
+                              {formatCurrency(product.price)}
+                            </span>
+                            <span className="font-bold text-lg text-green-600">
+                              {formatCurrency(discountedPrice)}
+                            </span>
+                          </div>
+                        ) : (
+                          <span className="font-semibold text-gray-900">
+                            {formatCurrency(product.price)}
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`px-3 py-1 text-sm font-semibold rounded-full ${
+                          product.stock === 0 
+                            ? 'bg-red-100 text-red-800' 
+                            : product.stock < 10 
+                            ? 'bg-yellow-100 text-yellow-800' 
+                            : 'bg-green-100 text-green-800'
+                        }`}>
+                          {product.stock} unit
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => {
+                              setEditingProduct(product)
+                              setForm({
+                                sku: product.sku,
+                                name: product.name,
+                                categoryId: product.categoryId,
+                                price: Number(product.price),
+                                discount: product.discount || 0,
+                                stock: product.stock
+                              })
+                              setError('')
+                              setShowModal(true)
+                            }}
+                            disabled={loading}
+                            className="p-2 text-blue-600 hover:bg-blue-50 disabled:opacity-50 rounded-lg hover:scale-105 transition-all"
+                            title="Edit"
+                          >
+                            <FiEdit2 className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => deleteProduct(product.id)}
+                            disabled={loading}
+                            className="p-2 text-red-600 hover:bg-red-50 disabled:opacity-50 rounded-lg hover:scale-105 transition-all"
+                            title="Hapus"
+                          >
+                            <FiTrash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </div>
+
+      {/* MODAL */}
+      {showModal && (
+        <>
+          <div 
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40" 
+            onClick={() => setShowModal(false)}
+          />
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div 
+              className="bg-white p-8 rounded-2xl w-full max-w-lg shadow-2xl border border-gray-100 max-h-[90vh] overflow-y-auto"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h2 className="text-2xl font-bold mb-6">
+                {editingProduct ? "Edit Produk" : "Tambah Produk Baru"}
+              </h2>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">SKU *</label>
+                  <input
+                    value={form.sku}
+                    onChange={(e) => setForm({...form, sku: e.target.value})}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                    placeholder="Contoh: SSG-001"
+                    disabled={loading}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Nama Produk *</label>
+                  <input
+                    value={form.name}
+                    onChange={(e) => setForm({...form, name: e.target.value})}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                    placeholder="Masukkan nama produk"
+                    disabled={loading}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Kategori ID *</label>
+                  <input
+                    value={form.categoryId}
+                    onChange={(e) => setForm({...form, categoryId: e.target.value})}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                    placeholder="ID kategori dari database"
+                    disabled={loading}
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Harga (Rp) *</label>
+                    <input
+                      type="number"
+                      value={form.price}
+                      min="0"
+                      step="1000"
+                      onChange={(e) => setForm({...form, price: Number(e.target.value) || 0})}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                      placeholder="25000"
+                      disabled={loading}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Diskon (%)</label>
+                    <input
+                      type="number"
+                      value={form.discount}
+                      min="0"
+                      max="100"
+                      step="1"
+                      onChange={(e) => {
+                        let val = Number(e.target.value)
+                        if (val > 100) val = 100
+                        if (val < 0) val = 0
+                        setForm({...form, discount: val})
+                      }}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all"
+                      placeholder="0"
+                      disabled={loading}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Stok</label>
+                  <input
+                    type="number"
+                    value={form.stock}
+                    min="0"
+                    onChange={(e) => setForm({...form, stock: Number(e.target.value) || 0})}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                    placeholder="0"
+                    disabled={loading}
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-3 mt-8 pt-6 border-t border-gray-100">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowModal(false)
+                    setEditingProduct(null)
+                    setError('')
+                  }}
+                  disabled={loading}
+                  className="px-8 py-3 border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 font-medium transition-all disabled:opacity-50"
+                >
+                  Batal
+                </button>
+                <button
+                  type="button"
+                  onClick={editingProduct ? updateProduct : createProduct}
+                  disabled={loading}
+                  className="px-8 py-3 bg-gradient-to-r from-black to-gray-800 text-white rounded-xl font-semibold hover:from-gray-800 hover:to-black disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl transition-all"
+                >
+                  {loading ? (
+                    <>
+                      <span className="animate-spin rounded-full h-4 w-4 border-b-2 border-white inline-block mr-2"></span>
+                      Menyimpan...
+                    </>
+                  ) : (
+                    'Simpan Produk'
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  )
 }
-
-main()
-  .catch((e) => {
-    console.error('❌ Seed failed:', e)
-    process.exit(1)
-  })
-  .finally(async () => {
-    await prisma.$disconnect()
-  })
