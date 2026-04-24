@@ -35,15 +35,48 @@ export async function GET() {
 export async function POST(req: Request) {
   try {
     const body = await req.json()
-    console.log('📦 POST body:', body)
+
+    if (!body.sku || !body.name || !body.categoryId) {
+      return NextResponse.json(
+        { message: "Data produk belum lengkap" },
+        { status: 400 }
+      )
+    }
+
+    const duplicateSku = await prisma.product.findUnique({
+      where: { sku: body.sku }
+    })
+
+    if (duplicateSku) {
+      return NextResponse.json(
+        { message: "SKU sudah terdaftar" },
+        { status: 409 }
+      )
+    }
+
+    const duplicateName = await prisma.product.findFirst({
+      where: {
+        name: {
+          equals: body.name,
+          mode: "insensitive"
+        }
+      }
+    })
+
+    if (duplicateName) {
+      return NextResponse.json(
+        { message: "Nama produk sudah terdaftar" },
+        { status: 409 }
+      )
+    }
 
     const category = await prisma.category.findUnique({
       where: { id: body.categoryId }
     })
-    
+
     if (!category) {
       return NextResponse.json(
-        { message: 'Kategori tidak ditemukan' }, 
+        { message: "Kategori tidak ditemukan" },
         { status: 400 }
       )
     }
@@ -57,7 +90,7 @@ export async function POST(req: Request) {
         discount: Number(body.discount ?? 0),
         stock: Number(body.stock ?? 0),
         categoryId: body.categoryId,
-        slug: body.name.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, ''),
+        slug: body.name.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, ""),
         images: body.images || [],
         isActive: true,
         weight: 0,
@@ -67,12 +100,11 @@ export async function POST(req: Request) {
       }
     })
 
-    console.log('✅ Created:', product.id)
     return NextResponse.json(product)
   } catch (error: any) {
-    console.error('❌ POST ERROR:', error)
+    console.error("POST ERROR:", error)
     return NextResponse.json(
-      { message: error.message || 'Gagal create produk' }, 
+      { message: error.message || "Gagal create produk" },
       { status: 500 }
     )
   }

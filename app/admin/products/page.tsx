@@ -86,44 +86,63 @@ export default function ProductsPage() {
      CREATE
   ======================= */
   const createProduct = async () => {
-    if (!form.sku || !form.name || !form.categoryId || form.price <= 0) {
-      setError('Lengkapi data produk dengan benar')
-      return
-    }
-
-    try {
-      setLoading(true)
-      setError('')
-      const res = await fetch("/api/products", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify(form)
-      })
-
-      if (!res.ok) {
-        const errorData = await res.json()
-        throw new Error(errorData.message || 'Gagal membuat produk')
-      }
-
-      const newProduct = await res.json()
-
-setProducts((prev) => [
-  {
-    ...newProduct,
-    category: categories.find(c => c.id === form.categoryId)?.name || "-"
-  },
-  ...prev
-])
-      setShowModal(false)
-      setForm({ sku: "", name: "", categoryId: "", price: 0, discount: 0, stock: 0 })
-    } catch (err: any) {
-      setError(err.message)
-    } finally {
-      setLoading(false)
-    }
+  if (!form.sku || !form.name || !form.categoryId || form.price <= 0) {
+    setError('Lengkapi data produk dengan benar')
+    return
   }
+
+  const isDuplicateSku = products.some(
+    (p) => p.sku.toLowerCase() === form.sku.toLowerCase()
+  )
+
+  const isDuplicateName = products.some(
+    (p) => p.name.toLowerCase() === form.name.toLowerCase()
+  )
+
+  if (isDuplicateSku) {
+    setError('SKU sudah terdaftar')
+    return
+  }
+
+  if (isDuplicateName) {
+    setError('Nama produk sudah terdaftar')
+    return
+  }
+
+  try {
+    setLoading(true)
+    setError('')
+
+    const res = await fetch("/api/products", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(form)
+    })
+
+    const data = await res.json().catch(() => ({}))
+
+    if (!res.ok) {
+      throw new Error(data.message || 'Gagal membuat produk')
+    }
+
+    setProducts((prev) => [
+      {
+        ...data,
+        category: categories.find(c => c.id === form.categoryId)?.name || "-"
+      },
+      ...prev
+    ])
+
+    setShowModal(false)
+    setForm({ sku: "", name: "", categoryId: "", price: 0, discount: 0, stock: 0 })
+  } catch (err: any) {
+    setError(err.message)
+  } finally {
+    setLoading(false)
+  }
+}
 
   /* =======================
      UPDATE
@@ -163,28 +182,26 @@ setProducts((prev) => [
   /* =======================
      DELETE
   ======================= */
- const deleteProduct = async (id: string) => {
+const deleteProduct = async (id: string) => {
   if (!confirm("Hapus produk ini?")) return
 
   try {
     setLoading(true)
-    console.log('🗑️ Deleting:', id)
-    
-    const res = await fetch(`/api/products/${id}`, { method: "DELETE" })
-    
+
+    const res = await fetch(`/api/products/${id}`, {
+      method: "DELETE",
+    })
+
+    const data = await res.json().catch(() => ({}))
+
     if (!res.ok) {
-      const error = await res.json()
-      throw new Error(error.message || 'Gagal hapus')
+      throw new Error(data.message || "Gagal hapus")
     }
 
-    // ✅ INSTANT UPDATE - pakai callback
-    setProducts(products => products.filter(p => p.id !== id))
-    console.log('✅ Deleted from UI')
-    
+    setProducts((prev) => prev.filter((p) => p.id !== id))
   } catch (err: any) {
-    console.error('❌ Error:', err)
     setError(err.message)
-    alert('Gagal hapus: ' + err.message)
+    alert("Gagal hapus: " + err.message)
   } finally {
     setLoading(false)
   }
@@ -282,7 +299,7 @@ setProducts((prev) => [
                         </div>
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-600">
-                        {product.categoryId}
+                        {categories.find(c => c.id === product.categoryId)?.name || '-'}
                       </td>
                       <td className="px-6 py-4 text-sm font-medium text-gray-900">
                         {formatCurrency(product.price)}

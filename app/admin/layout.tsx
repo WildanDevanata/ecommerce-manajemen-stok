@@ -9,6 +9,7 @@ import {
   FiGrid,
   FiPackage,
   FiShoppingCart,
+  FiLayers,
   FiBarChart2,
   FiSettings,
   FiLogOut,
@@ -22,6 +23,7 @@ const menuItems = [
     items: [
       { icon: FiGrid, label: 'Dashboard', href: '/admin' },
       { icon: FiShoppingBag, label: 'Produk', href: '/admin/products' },
+      { icon: FiLayers, label: 'Kategori', href: '/admin/categories' },
       { icon: FiPackage, label: 'Manajemen Stok', href: '/admin/stock' },
       { icon: FiShoppingCart, label: 'Transaksi', href: '/admin/transactions' },
       { icon: FiBarChart2, label: 'Laporan Penjualan', href: '/admin/reports' },

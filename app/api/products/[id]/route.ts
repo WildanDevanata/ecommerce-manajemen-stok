@@ -1,59 +1,79 @@
 import { prisma } from "@/lib/prisma"
+import { Prisma } from "@prisma/client"
 import { NextRequest, NextResponse } from "next/server"
-import { Prisma } from '@prisma/client' // ✅ Tambah di atas!
 
-export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
+/* =======================
+   UPDATE PRODUCT
+======================= */
+export async function PUT(
+  req: NextRequest,
+  context: { params: Promise<{ id: string }> }
+) {
   try {
+    const { id } = await context.params
     const body = await req.json()
-    
-    // ✅ VALIDASI ID
-    if (!params.id) {
-      return NextResponse.json({ error: 'ID tidak valid' }, { status: 400 })
+
+    console.log("PUT ID:", id)
+
+    if (!id) {
+      return NextResponse.json({ message: "ID tidak valid" }, { status: 400 })
     }
-    
-    console.log('PUT ID:', params.id, 'body:', body)
 
     const product = await prisma.product.update({
-      where: { id: params.id },
+      where: { id },
       data: {
         name: body.name,
         sku: body.sku,
-        price: new Prisma.Decimal(body.price), // Import Prisma!
+        price: new Prisma.Decimal(body.price),
         discount: Number(body.discount ?? 0),
         stock: Number(body.stock ?? 0),
         categoryId: body.categoryId,
-        slug: body.name.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, ''),
-      }
+        slug: body.name
+          .toLowerCase()
+          .replace(/\s+/g, "-")
+          .replace(/[^a-z0-9-]/g, ""),
+      },
     })
 
     return NextResponse.json(product)
   } catch (error: any) {
-    console.error('PUT Error:', error)
-    return NextResponse.json({ message: error.message }, { status: 400 })
+    console.error("PUT Error:", error)
+
+    return NextResponse.json(
+      { message: error.message || "Gagal update produk" },
+      { status: 500 }
+    )
   }
 }
 
+/* =======================
+   DELETE PRODUCT
+======================= */
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
-  console.log('🗑️ params.id:', params.id)
-
-  if (!params.id) {
-    return NextResponse.json({ error: 'ID required' }, { status: 400 })
-  }
-
   try {
+    const { id } = await context.params
+
+    console.log("DELETE ID:", id)
+
+    if (!id || id === "undefined") {
+      return NextResponse.json({ message: "ID tidak valid" }, { status: 400 })
+    }
+
     await prisma.product.delete({
-      where: { id: params.id }
+      where: { id },
     })
 
-    return NextResponse.json({ success: true })
+    return NextResponse.json({
+      message: "Produk berhasil dihapus",
+    })
   } catch (error: any) {
-    console.error('❌ Prisma error:', error)
+    console.error("DELETE Error:", error)
 
     return NextResponse.json(
-      { error: error.message },
+      { message: error.message || "Gagal hapus" },
       { status: 500 }
     )
   }
